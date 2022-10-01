@@ -20,6 +20,8 @@ export const App = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    if (!query) return;
+
     async function getImages() {
       setIsLoading(true);
 
@@ -39,7 +41,6 @@ export const App = () => {
       }
     }
 
-    if (!query) return;
     getImages();
   }, [query, page]);
 
