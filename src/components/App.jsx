@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import { useState, useEffect } from 'react';
 
 import { fetchImages } from './api';
 import css from './App.module.css';
@@ -8,35 +8,24 @@ import { Button } from './Button/Button';
 import { Loader } from './Loader/Loader';
 import { Modal } from './Modal/Modsl';
 
-export class App extends Component {
-  state = {
-    page: 1,
-    query: '',
-    images: [],
-    totalImages: 0,
-    isLoading: false,
-    isModalOpen: false,
-    modalInfo: {
-      url: '',
-      alt: '',
-    },
-    error: null,
-  };
+export const App = () => {
+  const [page, setPage] = useState(1);
+  const [query, setQuery] = useState('');
+  const [images, setImages] = useState([]);
+  const [totalImages, setTotalImages] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalUrl, setModalUrl] = useState('');
+  const [modalAlt, setModalAlt] = useState('');
+  const [error, setError] = useState(null);
 
-  componentDidUpdate(_, prevState) {
-    const { query, page } = this.state;
+  useEffect(() => {
+    if (!query) return;
+    getImages();
+  }, [query, page]);
 
-    if (page !== prevState.page || query !== prevState.query) {
-      this.getImages();
-    }
-  }
-
-  async getImages() {
-    const { page, query } = this.state;
-
-    this.setState({
-      isLoading: true,
-    });
+  async function getImages() {
+    setIsLoading(true);
 
     try {
       const { newImages, totalImages } = await fetchImages(query, page);
@@ -45,94 +34,65 @@ export class App extends Component {
         throw new Error(`There is no results for ${query} :( Try again`);
       }
 
-      this.setState(prevState => ({
-        images: [...prevState.images, ...newImages],
-        totalImages,
-      }));
+      setImages(prevImages => [...prevImages, ...newImages]);
+      setTotalImages(totalImages);
     } catch (error) {
-      this.setState({
-        error: error.message,
-      });
+      setError(error.message);
     } finally {
-      this.setState({
-        isLoading: false,
-      });
+      setIsLoading(false);
     }
   }
 
-  onFormSubmit = e => {
+  const onFormSubmit = e => {
     e.preventDefault();
-    const { query } = this.state;
     const newQuery = e.target.elements.searchQuery.value;
 
     if (query !== newQuery) {
-      this.setState({
-        images: [],
-        page: 1,
-        error: null,
-        showLoadMoreBtn: false,
-        totalImages: 0,
-        query: newQuery,
-      });
+      setImages([]);
+      setPage(1);
+      setError(null);
+      setTotalImages(0);
+      setQuery(newQuery);
     }
   };
 
-  onLoadMoreClick = () => {
-    this.setState(prevState => ({
-      page: prevState.page + 1,
-    }));
+  const onLoadMoreClick = () => {
+    setPage(prevPage => prevPage + 1);
   };
 
-  openModal = (url, alt) => {
-    this.setState({
-      isModalOpen: true,
-      modalInfo: {
-        url,
-        alt,
-      },
-    });
+  const openModal = (url, alt) => {
+    setIsModalOpen(true);
+    setModalUrl(url);
+    setModalAlt(alt);
   };
 
-  closeModal = e => {
+  const closeModal = e => {
     if (e.target === e.currentTarget || e.code === 'Escape') {
-      this.setState({
-        isModalOpen: false,
-        modalInfo: {
-          url: '',
-          alt: '',
-        },
-      });
+      setIsModalOpen(false);
+      setModalUrl('');
+      setModalAlt('');
     }
   };
 
-  render() {
-    const { images, isLoading, isModalOpen, modalInfo, error, totalImages } =
-      this.state;
+  return (
+    <div className={css.app}>
+      <Searchbar onSubmit={onFormSubmit} isSubmiting={isLoading} />
 
-    return (
-      <div className={css.app}>
-        <Searchbar onSubmit={this.onFormSubmit} isSubmiting={isLoading} />
+      {isLoading && <Loader />}
 
-        {isLoading && <Loader />}
+      {error && <p>{error}</p>}
 
-        {error && <p>{error}</p>}
+      {isModalOpen && (
+        <Modal imageURL={modalUrl} alt={modalAlt} closeModal={closeModal} />
+      )}
 
-        {isModalOpen && (
-          <Modal
-            imageURL={modalInfo.url}
-            alt={modalInfo.alt}
-            closeModal={this.closeModal}
-          />
-        )}
+      {images.length > 0 && (
+        <ImageGallery images={images} openModal={openModal} />
+      )}
 
-        {images.length > 0 && (
-          <ImageGallery images={images} openModal={this.openModal} />
-        )}
-
-        {images.length < totalImages && images.length > 0 && (
-          <Button onClick={this.onLoadMoreClick} />
-        )}
-      </div>
-    );
-  }
-}
+      {images.length < totalImages && images.length > 0 && (
+        <Button onClick={onLoadMoreClick} />
+      )}
+    </div>
+  );
+};
