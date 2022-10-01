@@ -20,28 +20,28 @@ export const App = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    async function getImages() {
+      setIsLoading(true);
+
+      try {
+        const { newImages, totalImages } = await fetchImages(query, page);
+
+        if (newImages.length === 0) {
+          throw new Error(`There is no results for ${query} :( Try again`);
+        }
+
+        setImages(prevImages => [...prevImages, ...newImages]);
+        setTotalImages(totalImages);
+      } catch (error) {
+        setError(error.message);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
     if (!query) return;
     getImages();
   }, [query, page]);
-
-  async function getImages() {
-    setIsLoading(true);
-
-    try {
-      const { newImages, totalImages } = await fetchImages(query, page);
-
-      if (newImages.length === 0) {
-        throw new Error(`There is no results for ${query} :( Try again`);
-      }
-
-      setImages(prevImages => [...prevImages, ...newImages]);
-      setTotalImages(totalImages);
-    } catch (error) {
-      setError(error.message);
-    } finally {
-      setIsLoading(false);
-    }
-  }
 
   const onFormSubmit = e => {
     e.preventDefault();
